@@ -3636,6 +3636,7 @@ async def run_game():
                               "If you did not receive a pm, please let {} know.".format('> <@'.join(sort_players(session[1])),
                               'roles' if session[6].startswith('roles') else session[6], len(session[1]),
                               client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
+                              client.loop.create_task(stasis_auto_expire_loop())
     for i in range(RETRY_RUN_GAME):
         try:
             if datetime.now().date() == __import__('datetime').date(2018, 4, 1):
@@ -4613,7 +4614,19 @@ async def game_start_timeout_loop():
         session[4] = [timedelta(0), timedelta(0)]
         session[6] = ''
         session[7] = {}
-
+        
+async def stasis_auto_expire_loop():
+    session[9] = datetime.now()
+    while not session[8] and len(session[1]) > 0 and datetime.now() - session[9] < timedelta(seconds=STASIS_AUTO_EXPIRE):
+        await asyncio.sleep(0.1)
+    if not session[8] and len(session[1]) > 0:
+        session[8] = True
+        await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
+        await send_lobby("Stasises for all users have expired because a game has not started recently. ")
+        for stasised in [x for x in stasis if stasis[x] > 0]:
+            stasis[stasised] = 0
+        session[8] = False
+        
 async def wait_timer_loop():
     global wait_bucket
     timer = datetime.now()
